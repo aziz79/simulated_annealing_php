@@ -89,13 +89,17 @@ class Annealer{
         // potential problem
       $elapsed = time() - $this->start;
       if($step == 0){
-          print(' Temperature        Energy    Accept   Improve     Elapsed   Remaining \n');
-          printf("\r%12.2f  %12.2f                      %s            ", $T, $E, time_string($elapsed));
+          //print(' Temperature        Energy    Accept   Improve     Elapsed   Remaining \n');
+          //printf("\r%12.2f  %12.2f                      %s            ", $T, $E, time_string($elapsed));
+
+          echo " Temperature        Energy    Accept   Improve     Elapsed   Remaining \n";
+          $toPrint1 = sprintf("\r%12.2f  %12.2f                      %s            ", $T, $E, time_string($elapsed));
+          echo "$toPrint1 \n";
       }
       else{
           $remain = ($this->steps - $step) * ($elapsed / $step);
-          printf("\r%12.2f  %12.2f  %7.2f%%  %7.2f%%  %s  %s", $T, $E, 100.0 * $acceptance, 100.0 * $improvement,time_string($elapsed), time_string($remain));
-
+          $toPrint2 = sprintf("\r%12.2f  %12.2f  %7.2f%%  %7.2f%%  %s  %s", $T, $E, 100.0 * $acceptance, 100.0 * $improvement,time_string($elapsed), time_string($remain));
+          echo "$toPrint2 \n";
       }
   }
   function anneal(){

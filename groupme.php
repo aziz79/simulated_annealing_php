@@ -24,6 +24,7 @@ define("ACTIVITY_END", 2);
 define("ACTIVITY_DURATION", 3);
 define("ACTIVITY_TYPE", 4);
 
+define("MAXSEQUENCE", 2);
 
 $DZNINSTANCE = '../test/2_phases_simple_instance.dzn';
 
@@ -86,53 +87,6 @@ dzn_import($DZNINSTANCE);
 
 
 
-
-
-
-$best_solution = NULL;
-$best_value = PHP_INT_MAX;
-$metric = array();
-for($rep = 0; $rep < 1; $rep++){
-  srand((double)microtime()*1000000);
-
-  echo " Start iteration ".$rep;
-
-  #init_state = generate_best_state()
-  #problem = GroupMeProblem(init_state)
-  #print "Initial metric value: " + str(problem.energy())    
-  #print_state(init_state)
-  #exit(0)
-  
-  $init_state = generate_inital_state();
-  $problem = new GroupMeProblem($init_state);
-  
-  $problem->updates = 60;   # Number of updates (by default an update prints to stdout)
-
-  #print "Trying to find automatic schedule",
-  #auto_schedule = problem.auto(minutes=1)
-  #print "Scedule for annealing",
-  #print auto_schedule
-  #problem.set_schedule(auto_schedule)
-
-  $problem->$Tmax = 2;  # Max (starting) temperature
-  $problem->$Tmin = 1;     # Min (ending) temperature
-  $problem->$steps = 100;   # Number of iterations
-  //$problem->$steps = 100000;   # Number of iterations
-  
-  //solution, metric[rep] = problem->anneal()
-  $rlt = $problem->anneal();
-  $solution =  $rlt[0];
-  $value =  $rlt[1];
-  if($metric[$rep] < $best_value){
-    $best_value = $metric[$rep]
-    $best_solution = $solution;
-  }
-}
-print_state($best_solution);
-
-echo "";
-echo "Best solution metric function value: ".$best_value;
-echo "Metric vector: " . var_dump($metric);
 
 
 function dzn_import($file_path){
@@ -286,47 +240,60 @@ class GroupMeProblem extends Annealer {
 *
 **/
 
-  // public function __construct(){
-  //      $this->strvar = "changed in constructor";
-  //  }
+  public function __construct($init_state){
+    $this->state = $init_state;
+      // $this->strvar = "changed in constructor";
+   }
 
-  public function delete_activity($user,$phase){
+  function delete_activity($user,$phase){
    unset($this->state[$phase][STATE_ACT][$user]);     
    unset($this->state[$phase][STATE_START][$user]);
  }
 
 //check if exists activity overlap for a user
- public function overlap($user,$activity,$start,$phase){
-  for ($i=$phase+1; $i < $MAXSEQUENCE; $i++) { 
-    $cmpVal = $start + $activities[$phase][$activity][$ACTIVITY_DURATION] + $distances[$activities[$phase][$activity][$ACTIVITY_CELL]][$activities[$i][$this->state[$i][STATE_ACT][$user]][$ACTIVITY_CELL]];
-    if (array_key_exists($user, $this->state[$i][STATE_ACT]) && $cmpVal > $this->$tate[$i][STATE_START][$user]) {
+  function overlap($user,$activity,$start,$phase){
+  //$MAXSEQUENCE =$GLOBALS['MAXSEQUENCE'];
+  //$ACTIVITY_CELL = $GLOBALS['ACTIVITY_CELL'];
+
+  for ($i=$phase+1; $i < MAXSEQUENCE; $i++) { 
+    //var_dump($this->state);
+    $cmpVal = $start + $activities[$phase][$activity][ACTIVITY_DURATION] + $distances[$activities[$phase][$activity][ACTIVITY_CELL]][$activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL]];
+    //echo "\n state act:".STATE_ACT." state start:".STATE_START." user:".$user." cmpVal:".$cmpVal."\n";
+    //var_dump($this->state);
+    if (array_key_exists($user, $this->state[$i][STATE_ACT])) {
+        if($cmpVal > $this->state[$i][STATE_START][$user]) 
       return $i;
     }
-  }
+  
   for ($i=0; $i < $phase; $i++) { 
-    $first = $activities[$i][$this->state[$i]STATE_ACT][$user]][$ACTIVITY_CELL];
-    $second = $activities[$phase][$activity][$ACTIVITY_CELL];
-    $cmpVal = $this->state[$i][STATE_START][$user] + $activities[$i][$this->state[$i][STATE_ACT][$user]][$ACTIVITY_DURATION] + $distances[$first][$second];
+    $first = $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL];
+    $second = $activities[$phase][$activity][ACTIVITY_CELL];
+    $cmpVal = $this->state[$i][STATE_START][$user] + $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_DURATION] + $distances[$first][$second];
     if (array_key_exists($user, $this->state[$i][STATE_ACT]) && $cmpVal > $start) {
       return $i;
     }
   }
   return NULL;  
 }
+}
 
 //Calculates the metric function.
-public function energy($self){
+ function energy(){
+  $USERSN = $GLOBALS['USERSN'];
+  $preferences = $GLOBALS['preferences'];
+  $activities = $GLOBALS['activities'];
+
   $metric = 0;
   //for those users that have been assign an activity
-  for ($i=0; $i < $MAXSEQUENCE; $i++) { 
+  for ($i=0; $i < MAXSEQUENCE; $i++) { 
     foreach ($this->state[$i][STATE_ACT] as $j => $value) {
-      $k = $activities[$i][$this->state[$i][STATE_ACT][$j]][$ACTIVITY_TYPE];
+      $k = $activities[$i][$this->state[$i][STATE_ACT][$j]][ACTIVITY_TYPE];
       $metric -= $preferences[$j][$k];
     }
 
   }
   # -20 if a user is not assigned to an activity
-  for ($i=0; $i < $MAXSEQUENCE; $i++){ 
+  for ($i=0; $i < MAXSEQUENCE; $i++){ 
     for ($j=0; $j < $USERSN; $j++){
       if(!array_key_exists($j, $this->state[$i][STATE_ACT])){
         $metric += 20;
@@ -339,6 +306,13 @@ public function energy($self){
 function move(){
       #add an activity to the system
       #an activity should have a positive weight
+  $MAXSEQUENCE = $GLOBALS['MAXSEQUENCE'];
+  $USERSN = $GLOBALS['USERSN'];
+
+  $MINGROUPSIZE = $GLOBALS['MINGROUPSIZE'];
+  $MAXGROUPSIZE = $GLOBALS['MAXGROUPSIZE'];
+  $preferences = $GLOBALS['preferences'];
+  $activities = $GLOBALS['activities'];
 
   //move only one activity phase
   $phase = rand(0, $MAXSEQUENCE-1);
@@ -355,11 +329,11 @@ function move(){
 
 
     foreach ($users as $keyi => $i) {
-      $gain += $preferences[$i][$activities[$phase][$activity][$ACTIVITY_TYPE]];
+      $gain += $preferences[$i][$activities[$phase][$activity][ACTIVITY_TYPE]];
 
       //??? calculate activity starting time, very strange!!!  ???
-      $intern = $activities[$phase][$activity][$ACTIVITY_END] - $activities[$phase][$activity][$ACTIVITY_DURATION];
-      $starting_time = rand($activities[$phase][$activity][$ACTIVITY_START],$intern);
+      $intern = $activities[$phase][$activity][ACTIVITY_END] - $activities[$phase][$activity][ACTIVITY_DURATION];
+      $starting_time = rand($activities[$phase][$activity][ACTIVITY_START],$intern);
 
       # set chosen activity for every user
       # possible deleting incompatible ones
@@ -389,7 +363,7 @@ function move(){
             $act_map[$i] = array();
             foreach ($this->state[$i][STATE_ACT] as $j => $values) {
               $actOfUserJInState = $this->state[$i][STATE_ACT][$j];
-              if(array_rand($act_map[$i], $actOfUserJInState))
+              if(array_key_exists($actOfUserJInState,$act_map[$i]))
                 $act_map[$i][$actOfUserJInState][] = $j;
               else
                 $act_map[$i][$actOfUserJInState] = array($j);
@@ -397,13 +371,15 @@ function move(){
             }
 
           //check user activity
-          foreach($act_map[$i] as $j => $values) {
-              if(count($act_map[$i][$j]) < $MINGROUPSIZE){
-                foreach($act_map[$i][$j] as $key => $k){
-                  $this->delete_activity($k,$i);
-                  unset($act_map[$i][$j]);
+          for($i = 0; $i < $MAXSEQUENCE; $i++){
+                foreach($act_map[$i] as $j => $values) {
+                    if(count($act_map[$i][$j]) < $MINGROUPSIZE){
+                      foreach($act_map[$i][$j] as $key => $k){
+                        $this->delete_activity($k,$i);
+                      }
+                      unset($act_map[$i][$j]);
+                    }
                 }
-              }
           }
                 #try to reassign activites if possible
                 #select the best among available
@@ -437,7 +413,7 @@ function move(){
 # generate an state where no activity is assigned to users
 function generate_inital_state(){
   $init_state = array();
-  for($i = 0; $i < $MAXSEQUENCE; $i++){
+  for($i = 0; $i < MAXSEQUENCE; $i++){
     $init_state[$i] = array();
     $init_state[$i][STATE_START] =array();
     $init_state[$i][STATE_ACT] = array();
@@ -446,8 +422,14 @@ function generate_inital_state(){
 }
 
 function print_state($state){
+  $USERSN = $GLOBALS['USERSN'];
+  $MAXSEQUENCE = $GLOBALS['MAXSEQUENCE'];
+  $preferences = $GLOBALS['preferences'];
+  $activities = $GLOBALS['activities'];
+
+  
   for($i = 0; $i < $USERSN; $i++){
-    echo "User ".str(i).":";
+    echo "User ".$i.": \n";
     $weight = 0;
     $prev_act = NULL;
     $prev_phase = NULL;
@@ -456,10 +438,13 @@ function print_state($state){
       if (array_key_exists($i, $state[$j][STATE_ACT])) {
         $act = $state[$j][STATE_ACT][$i];
         $start = $state[$j][STATE_START][$i];
-        $weight += $preferences[($i,$activities[$j][$act][$ACTIVITY_TYPE])];
-        echo "\tactivity ".$act." from ".$start." to ".($start + $activities[$j][$act][$ACTIVITY_DURATION]);
+        $tmpidAct = $activities[$j][$act][ACTIVITY_TYPE];
+
+        $weight += $preferences[$i][$tmpidAct];
+
+        echo "\tactivity ".$act." from ".$start." to ".($start + $activities[$j][$act][ACTIVITY_DURATION]);
         if ($prev_act != NULL) {
-          echo "\ttraveling distance ".$distances[$activities[$prev_phase][$prev_act][$ACTIVITY_CELL]][$activities[$j][$act][$ACTIVITY_CELL]];
+          echo "\ttraveling distance ".$distances[$activities[$prev_phase][$prev_act][ACTIVITY_CELL]][$activities[$j][$act][ACTIVITY_CELL]];
         }else{
           echo "";
           $prev_act = $act;
@@ -471,6 +456,56 @@ function print_state($state){
     }
   }
 }
+
+
+
+
+
+$best_solution = NULL;
+$best_value = PHP_INT_MAX;
+$metric = array();
+for($rep = 0; $rep < 1; $rep++){
+  srand((double)microtime()*1000000);
+
+  echo "Start iteration ".$rep."\n";
+
+  #init_state = generate_best_state()
+  #problem = GroupMeProblem(init_state)
+  #print "Initial metric value: " + str(problem.energy())    
+  #print_state(init_state)
+  #exit(0)
+  
+  $init_state = generate_inital_state();
+  $problem = new GroupMeProblem($init_state);
+  
+  $problem->updates = 60;   # Number of updates (by default an update prints to stdout)
+
+  #print "Trying to find automatic schedule",
+  #auto_schedule = problem.auto(minutes=1)
+  #print "Scedule for annealing",
+  #print auto_schedule
+  #problem.set_schedule(auto_schedule)
+
+  $problem->Tmax = 2;  # Max (starting) temperature
+  $problem->Tmin = 1;     # Min (ending) temperature
+  $problem->steps = 10000;   # Number of iterations
+  //$problem->$steps = 100000;   # Number of iterations
+  
+  //solution, metric[rep] = problem->anneal()
+  $rlt = $problem->anneal();
+  $solution =  $rlt[0];
+  $value =  $rlt[1];
+  if($metric[$rep] < $best_value){
+    $best_value = $metric[$rep];
+    $best_solution = $solution;
+  }
+}
+print_state($best_solution);
+
+echo "\n";
+echo "Best solution metric function value: ".$best_value."\n";
+echo "Metric vector: " . var_dump($metric)."\n";
+
 
 // function generate_best_state(){
 //   $group_act_map = array();

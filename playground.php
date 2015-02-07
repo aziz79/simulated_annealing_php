@@ -4,11 +4,14 @@
 // $t = (float)rand()/(float)getrandmax();
 // echo "$t \n";
 
+$MAX = 20;
+
 class Val{
 	var $x = 3;
 	//$y = 6;
 	function doit(){
-		return $this->x;
+		$USERSN = $GLOBALS['MAX'];
+		return "(".$this->x." ... ".$USERSN.")";
 		//return $y;
 	}
 
