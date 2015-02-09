@@ -289,6 +289,7 @@ class GroupMeProblem extends Annealer {
     foreach ($this->state[$i][STATE_ACT] as $j => $value) {
       $k = $activities[$i][$this->state[$i][STATE_ACT][$j]][ACTIVITY_TYPE];
       $metric -= $preferences[$j][$k];
+      //echo "minus \n";
     }
 
   }
@@ -297,6 +298,7 @@ class GroupMeProblem extends Annealer {
     for ($j=0; $j < $USERSN; $j++){
       if(!array_key_exists($j, $this->state[$i][STATE_ACT])){
         $metric += 20;
+        //echo "plus \n";
       }
     }
   }
@@ -494,8 +496,9 @@ for($rep = 0; $rep < 1; $rep++){
   //solution, metric[rep] = problem->anneal()
   $rlt = $problem->anneal();
   $solution =  $rlt[0];
-  $value =  $rlt[1];
+  $metric[$rep] =  $rlt[1];
   if($metric[$rep] < $best_value){
+    //echo " \n  xx \n";
     $best_value = $metric[$rep];
     $best_solution = $solution;
   }
@@ -504,7 +507,10 @@ print_state($best_solution);
 
 echo "\n";
 echo "Best solution metric function value: ".$best_value."\n";
-echo "Metric vector: " . var_dump($metric)."\n";
+echo "Metric vector: \n";
+var_dump($metric);
+
+
 
 
 // function generate_best_state(){
