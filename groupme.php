@@ -76,7 +76,7 @@ function dzn_import($file_path){
   }else if ($splitted[0] == "group_ids") {
     $GROUPSN = intval($ls[2]);
   }else if ($splitted[0] == "type_ids") {
-    $MAXTYPE = intval($ls[2]);
+    $iAXTYPE = intval($ls[2]);
   }else if ($splitted[0] == "time_slot_ids") {
     $MAXTIME = intval($ls[2]);
   }else if ($splitted[0] == "min_group_size") {
@@ -240,28 +240,20 @@ class GroupMeProblem extends Annealer {
     foreach ($this->state[$i][STATE_ACT] as $j => $value) {
       $k = $activities[$i][$this->state[$i][STATE_ACT][$j]][ACTIVITY_TYPE];
       $metric -= $preferences[$j][$k];
-      //echo "minus \n";
     }
 
   }
+
   # -20 if a user is not assigned to an activity
   for ($i=0; $i < MAXSEQUENCE; $i++){ 
     for ($j=0; $j < $USERSN; $j++){
       if(!array_key_exists($j, $this->state[$i][STATE_ACT])){
         $metric += 20;
-        //echo "plus \n";
+        // echo "plus \n";
       }
     }
   }
 
-  // echo "\n*************************************\n";
-  // var_dump($this->state);
-  //  echo "\n*************** $metric $s **********************\n";
-
-
-// if ($s == 10) {
-//   die("a");
-// }
    
  // echo "energy $metric \n";
   return $metric;
@@ -281,102 +273,105 @@ function move(){
   //move only one activity phase
   $phase = rand(0, MAXSEQUENCE-1);
   $gain = 0;
+  $activity;
   while ($gain == 0) {
 
     //choose an activity from this phase
     $activity = rand(0,count($activities[$phase])-1);
 
     //choose set of users that will be influenced
-    $n = rand($MINGROUPSIZE,$MAXGROUPSIZE);
+    $j = rand($MINGROUPSIZE,$MAXGROUPSIZE);
     //$usersnarr = range(0,$USERSN);
-    $users = array_rand(range(0,$USERSN-1), $n);
+    $users = array_rand(range(0,$USERSN-1), $j);
 
 
     foreach ($users as $keyi => $i) {
       $gain += $preferences[$i][$activities[$phase][$activity][ACTIVITY_TYPE]];
-
-      //??? calculate activity starting time, very strange!!!  ???
-      $intern = $activities[$phase][$activity][ACTIVITY_END] - $activities[$phase][$activity][ACTIVITY_DURATION];
-      $starting_time = rand($activities[$phase][$activity][ACTIVITY_START],$intern);
-
-      # set chosen activity for every user
-      # possible deleting incompatible ones
-      foreach ($users as $keyj => $j) {
-        $this->state[$phase][STATE_ACT][$j] = $activity;
-        $this->state[$phase][STATE_START][$j] = $starting_time;
-        //get overlap
-        // $phase_to_del = $this->overlap($j,$activity,$starting_time,$phase);
-        // while($phase_to_del != NULL){
-        //   $this->delete_activity($j,$phase_to_del);
-        //   $phase_to_del = $this->overlap($j,$activity,$starting_time,$phase);
-        // }
-          # check if MINGROUPSIZE constraint is not satisfied
-          # if so action are deleted
-          //$act_map = {
-          //  phase1: {
-          //      activity1: {1,3,4, ...},
-          //      activity2: {2,5,8, ...},
-          //      },
-          //  phase2: ...
-          //}
-          //
-          
-          //map user activities
-          // $act_map = array();
-          // for($m = 0; $m < MAXSEQUENCE; $m++){
-          //   $act_map[$m] = array();
-          //   foreach ($this->state[$m][STATE_ACT] as $n => $nact) {
-          //    // $actOfUserJInState = $this->state[$i][STATE_ACT][$n];
-          //     if(array_key_exists($nact,$act_map[$m]))
-          //       $act_map[$m][$nact][] = $n;
-          //     else
-          //       $act_map[$m][$nact] = array($n);
-          //     }
-          //   }
-
-          // //var_dump($act_map);
-          // //check user activity
-          // for($p = 0; $p < MAXSEQUENCE; $p++){
-          //       foreach($act_map[$p] as $q => $qusrs) {
-          //           if(count($qusrs) < $MINGROUPSIZE){
-          //             foreach($act_map[$p][$q] as $qk => $qu){
-          //               $this->delete_activity($qk,$p);
-          //             }
-          //             unset($act_map[$p][$q]);
-          //           }
-          //       }
-          // }
-                #try to reassign activites if possible
-                #select the best among available
-          // for($t = 0; $t < MAXSEQUENCE; $t++){
-          //     for($s = 0; $s < $USERSN; $s++){
-          //       //echo "111\n";
-          //       if(!array_key_exists($s, $this->state[$t][STATE_ACT])){
-          //         //echo "222\n";
-                  
-          //         foreach ($act_map[$t] as $amAct => $amUsers) {
-
-          //           if (count($amUsers) == $MAXGROUPSIZE) {
-          //             unset($act_map[$t][$amAct]);
-          //           }else{
-          //             $third = $this->state[$t][STATE_START][$act_map[$t][$amAct][0]];
-          //             if (!$this->overlap($s,$amAct,$third,$t)) {
-          //               //echo "lalalalal \n";
-          //               $act_map[$t][$amAct][] = $s;
-          //               $this->state[$t][STATE_ACT][$s] = $amAct;
-          //               $this->state[$t][STATE_START][$s] = $this->state[$t][STATE_START][$act_map[$t][$amAct][0]];
-          //               break;
-          //             }
-          //           }
-          //         }
-          //       }
-          //     }
-          //   }
-          
-        }
-      }
     }
   }
+      //??? calculate activity starting time, very strange!!!  ???
+  $intern = $activities[$phase][$activity][ACTIVITY_END] - $activities[$phase][$activity][ACTIVITY_DURATION];
+  $starting_time = rand($activities[$phase][$activity][ACTIVITY_START],$intern);
+
+
+  # set chosen activity for every user
+  # possible deleting incompatible ones
+  foreach ($users as $keyj => $i) {
+
+      $this->state[$phase][STATE_ACT][$i] = $activity;
+      $this->state[$phase][STATE_START][$i] = $starting_time;
+
+      $phase_to_del = $this->overlap($i,$activity,$starting_time,$phase);
+
+      while($phase_to_del != NULL){
+          $this->delete_activity($i,$phase_to_del);
+          $phase_to_del = $this->overlap($i,$activity,$starting_time,$phase);
+      }
+  }
+
+  //var_dump($this->state);
+
+  # check if MINGROUPSIZE constraint is not satisfied
+  # if so action are deleted
+  //$act_map = {
+  //  phase1: {
+  //      activity1: {1,3,4, ...},
+  //      activity2: {2,5,8, ...},
+  //      },
+  //  phase2: ...
+  //}
+  //
+
+  //map user activities, checked
+  $act_map = array();
+  for($i = 0; $i < MAXSEQUENCE; $i++){
+    $act_map[$i] = array();
+    foreach ($this->state[$i][STATE_ACT] as $j => $jact) {
+      if(array_key_exists($jact,$act_map[$i]))
+        $act_map[$i][$jact][] = $j;
+      else
+        $act_map[$i][$jact] = array($j);
+    }
+  }
+
+
+  //check user activity, checked
+  for($i = 0; $i < MAXSEQUENCE; $i++){
+        foreach($act_map[$i] as $j => $qusrs) {
+            if(count($qusrs) < $MINGROUPSIZE){
+              foreach($act_map[$i][$j] as $k => $qu){
+                $this->delete_activity($k,$i);
+              }
+              unset($act_map[$i][$j]);
+              // echo "\n deleting act_map[$i][$j] \n ";
+            }
+        }
+  }
+
+  #try to reassign activites if possible
+  #select the best among available
+  for($i = 0; $i < MAXSEQUENCE; $i++){
+      for($j = 0; $j < $USERSN; $j++){
+
+
+        if(!array_key_exists($j, $this->state[$i][STATE_ACT])){
+          foreach ($act_map[$i] as $k => $amUsers) {
+            if (count($amUsers) == $MAXGROUPSIZE) {
+              unset($act_map[$i][$k]);
+            }else{
+              $third = $this->state[$i][STATE_START][$act_map[$i][$k][0]];
+              if (!$this->overlap($j,$k,$third,$i)) {
+                $act_map[$i][$k][] = $j;
+                $this->state[$i][STATE_ACT][$j] = $k;
+                $this->state[$i][STATE_START][$j] = $this->state[$i][STATE_START][$act_map[$i][$k][0]];
+                break;
+              }
+            }
+          }
+        }
+      }
+    }      
+  }//end foo
 }//end classe
 
 
@@ -393,12 +388,12 @@ function generate_inital_state(){
 
 function print_state($state){
   $USERSN = $GLOBALS['USERSN'];
-  $preferences = $GLOBALS['preferences'];
+  $distances = $GLOBALS['distances'];
   $activities = $GLOBALS['activities'];
 
   
   for($i = 0; $i < $USERSN; $i++){
-    echo "User ".$i.": \n";
+    echo "\nUser ".$i.": ";
     $weight = 0;
     $prev_act = NULL;
     $prev_phase = NULL;
@@ -413,14 +408,13 @@ function print_state($state){
 
         echo "\tactivity ".$act." from ".$start." to ".($start + $activities[$j][$act][ACTIVITY_DURATION]);
         if ($prev_act != NULL) {
-          echo "\ttraveling distance ".$distances[$activities[$prev_phase][$prev_act][ACTIVITY_CELL]][$activities[$j][$act][ACTIVITY_CELL]];
+          echo "\ttraveling distance  ".$distances[$activities[$prev_phase][$prev_act][ACTIVITY_CELL]][$activities[$j][$act][ACTIVITY_CELL]];
         }else{
           echo "";
           $prev_act = $act;
           $prev_phase = $j;
           echo "\t\tPreferences: " + $weight;
         }
-          # code...
       }
     }
   }
@@ -454,7 +448,7 @@ for($rep = 0; $rep < 1; $rep++){
 
   $problem->Tmax = 2;  # Max (starting) temperature
   $problem->Tmin = 1;     # Min (ending) temperature
-  $problem->steps = 5;   # Number of iterations
+  $problem->steps = 10000;   # Number of iterations
   //$problem->$steps = 100000;   # Number of iterations
   
   //solution, metric[rep] = problem->anneal()
