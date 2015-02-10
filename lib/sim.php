@@ -100,6 +100,7 @@ class Annealer{
           $remain = ($this->steps - $step) * ($elapsed / $step);
           $toPrint2 = sprintf("\r%12.2f  %12.2f  %7.2f%%  %7.2f%%  %s  %s", $T, $E, 100.0 * $acceptance, 100.0 * $improvement,time_string($elapsed), time_string($remain));
           echo "$toPrint2 \n";
+          flush();
       }
   }
   function anneal(){
