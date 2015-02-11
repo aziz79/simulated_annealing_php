@@ -229,6 +229,7 @@ class GroupMeProblem extends Annealer {
     return NULL;  
   }
 
+
 //Calculates the metric function.
  function energy(){
   $USERSN = $GLOBALS['USERSN'];
@@ -326,22 +327,20 @@ function move(){
   for($i = 0; $i < MAXSEQUENCE; $i++){
         foreach($act_map[$i] as $act => $actUsers) {
             if(count($actUsers) < $MINGROUPSIZE){
-              foreach($act_map[$i][$act] as $k => $qu){
-                $this->delete_activity($k,$i);
+              foreach($act_map[$i][$act] as $act2 => $act2user){
+                $this->delete_activity($act2user,$i);
               }
               unset($act_map[$i][$act]);
-              // echo "\n deleting act_map[$i][$act] \n ";
             }
         }
   }
+
 
   #try to reassign activites if possible
   #select the best among available
   for($i = 0; $i < MAXSEQUENCE; $i++){
       for($j = 0; $j < $USERSN; $j++){
         if(!array_key_exists($j, $this->state[$i][STATE_ACT])){
-
-
 
           foreach ($act_map[$i] as $act => $actUsers) {
             if (count($actUsers) == $MAXGROUPSIZE) {
@@ -363,8 +362,43 @@ function move(){
         }
       }
     }      
-  }//end foo
-}//end classe
+  }//end function move
+}//end classe GROUPME problem
+
+  // function checkOverlapByState($state){
+  //   $activities = $GLOBALS['activites'];
+  //   $distances = $GLOBALS['distances'];
+  //   for ($i=1; $i < MAXSEQUENCE; $i++) { 
+  //     $users = $state[$i];
+  //     $h = $i - 1;
+  //     foreach ($users as $user => $act) {
+  //       $actOfPhaseA = $state[$h][$user];
+  //       $actOfPhaseB = $act;
+
+  //       $actASource = $activities[$h][$actOfPhaseA];
+  //       $intervalAB = $activities[$h][$actOfPhaseA][ACTIVITY_START] + $activities[$h][$actOfPhaseA][ACTIVITY_DURATION] + $distances[][];
+  //     }
+  //     //var_dump($this->state);
+  //     $timeForTheNextActivity = $start + $activities[$phase][$activity][ACTIVITY_DURATION] + $distances[$activities[$phase][$activity][ACTIVITY_CELL]][$activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL]];
+  //     //echo "\n state act:".STATE_ACT." state start:".STATE_START." user:".$user." timeForTheNextActivity:".$timeForTheNextActivity."\n";
+  //     //var_dump($this->state);
+  //     if (array_key_exists($user, $this->state[$i][STATE_ACT])) {
+  //         if($timeForTheNextActivity > $this->state[$i][STATE_START][$user]) 
+  //         return $i;
+  //     }
+  //   }
+  
+  //   //the start of last activity should be suitable for this one, considering also distance.
+  //   for ($i=0; $i < $phase; $i++) { 
+  //       $first = $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL];
+  //       $second = $activities[$phase][$activity][ACTIVITY_CELL];
+  //       $timeForTheNextActivity = $this->state[$i][STATE_START][$user] + $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_DURATION] + $distances[$first][$second];
+  //       if (array_key_exists($user, $this->state[$i][STATE_ACT]) && $timeForTheNextActivity > $start) {
+  //         return $i;
+  //       }
+  //   }
+  //   return NULL;  
+  // }
 
 
 function get_actMapFromState($state){
@@ -488,7 +522,7 @@ for($rep = 0; $rep < 1; $rep++){
 
   $problem->Tmax = 2;  # Max (starting) temperature
   $problem->Tmin = 1;     # Min (ending) temperature
-  $problem->steps = 10000;   # Number of iterations
+  $problem->steps = 1000;   # Number of iterations
   //$problem->$steps = 100000;   # Number of iterations
   
   //solution, metric[rep] = problem->anneal()
