@@ -61,31 +61,32 @@ function dzn_import($file_path){
 
  $lines = file($file_path);
  foreach ($lines as $line_num => $line) {
-  $splitted = split(" = ", $line);
-  $content = $splitted[1];
-  $lss = str_replace(";", "", $splitted[1]);
+  $splitted = split("=", $line);
+  $arg = trim($splitted[0]);
+  $content = trim($splitted[1]);
+  $lss = str_replace(";", "", $content);
   $ls = split("\.", $lss);
-  if ($splitted[0] == "user_ids") {
+  if ($arg == "user_ids") {
     $USERSN = intval($ls[2]);
-  }else if ($splitted[0] == "activity1_ids") {
+  }else if ($arg == "activity1_ids") {
     $ACTIVITIES1N = intval($ls[2]);
-  }else if ($splitted[0] == "activity2_ids") {
+  }else if ($arg == "activity2_ids") {
     $ACTIVITIES2N = intval($ls[2]);
-  }else if ($splitted[0] == "cell_ids") {
+  }else if ($arg == "cell_ids") {
     $CELLSN = intval($ls[2]);
-  }else if ($splitted[0] == "group_ids") {
+  }else if ($arg == "group_ids") {
     $GROUPSN = intval($ls[2]);
-  }else if ($splitted[0] == "type_ids") {
+  }else if ($arg == "type_ids") {
     $iAXTYPE = intval($ls[2]);
-  }else if ($splitted[0] == "time_slot_ids") {
+  }else if ($arg == "time_slot_ids") {
     $MAXTIME = intval($ls[2]);
-  }else if ($splitted[0] == "min_group_size") {
+  }else if ($arg == "min_group_size") {
     $MINGROUPSIZE = intval($ls[0]);
-  }else if ($splitted[0] == "max_group_size") {
+  }else if ($arg == "max_group_size") {
     $MAXGROUPSIZE = intval($ls[0]);
-  }else if ($splitted[0] == "max_wait") {
+  }else if ($arg == "max_wait") {
     $MAXWAIT = intval($ls[0]);
-  }else if ($splitted[0] == "preferences") {
+  }else if ($arg == "preferences") {
     $csplitted = split("\|", $content);
     for ($i=1; $i < count($csplitted) -1; $i++) { 
       $pieces = split(",", $csplitted[$i]);
@@ -95,7 +96,7 @@ function dzn_import($file_path){
       }
       $preferences[] = $tmparr;
     }
-  }else if ($splitted[0] == "activities1") {
+  }else if ($arg == "activities1") {
     $csplitted = split("\|", $content);
     for ($i=1; $i < count($csplitted) -1; $i++) { 
       $pieces = split(",", $csplitted[$i]);
@@ -105,7 +106,7 @@ function dzn_import($file_path){
       }
       $activities[0][] = $tmparr;
     }
-  }else if ($splitted[0] == "activities2") {
+  }else if ($arg == "activities2") {
     $csplitted = split("\|", $content);
     for ($i=1; $i < count($csplitted) -1; $i++) { 
       $pieces = split(",", $csplitted[$i]);
@@ -115,7 +116,7 @@ function dzn_import($file_path){
       }
       $activities[1][] = $tmparr;
     }
-  }else if ($splitted[0] == "distances") {
+  }else if ($arg == "distances") {
     $csplitted = split("\|", $content);
     for ($i=1; $i < count($csplitted) -1; $i++) { 
       $pieces = split(",", $csplitted[$i]);
@@ -259,6 +260,10 @@ class GroupMeProblem extends Annealer {
   return $metric;
 }
 
+  /*******************************************/
+  /**  ---------    MOVE  ---------- **/
+  /*******************************************/
+
 function move(){
       #add an activity to the system
       #an activity should have a positive weight
@@ -274,22 +279,26 @@ function move(){
   $phase = rand(0, MAXSEQUENCE-1);
   $gain = 0;
   $activity;
+
+  /*******************************************/
+  /**  randomly choose ACT and set of USERS **/
+  /*******************************************/
   while ($gain == 0) {
 
-    //choose an activity from this phase
+    //randomly choose an activity from this phase
     $activity = rand(0,count($activities[$phase])-1);
 
     //choose set of users that will be influenced
     $j = rand($MINGROUPSIZE,$MAXGROUPSIZE);
-    //$usersnarr = range(0,$USERSN);
-    $users = array_rand(range(0,$USERSN-1), $j);
 
+    $users = array_rand(range(0,$USERSN-1), $j);
 
     foreach ($users as $keyi => $i) {
       $gain += $preferences[$i][$activities[$phase][$activity][ACTIVITY_TYPE]];
     }
   }
-      //??? calculate activity starting time, very strange!!!  ???
+  
+  //calculate activity starting time
   $intern = $activities[$phase][$activity][ACTIVITY_END] - $activities[$phase][$activity][ACTIVITY_DURATION];
   $starting_time = rand($activities[$phase][$activity][ACTIVITY_START],$intern);
 
@@ -309,41 +318,19 @@ function move(){
       }
   }
 
-  //var_dump($this->state);
+  //map user activities, checked
+  $act_map = get_actMapFromState($this->state);
 
   # check if MINGROUPSIZE constraint is not satisfied
   # if so action are deleted
-  //$act_map = {
-  //  phase1: {
-  //      activity1: {1,3,4, ...},
-  //      activity2: {2,5,8, ...},
-  //      },
-  //  phase2: ...
-  //}
-  //
-
-  //map user activities, checked
-  $act_map = array();
   for($i = 0; $i < MAXSEQUENCE; $i++){
-    $act_map[$i] = array();
-    foreach ($this->state[$i][STATE_ACT] as $j => $jact) {
-      if(array_key_exists($jact,$act_map[$i]))
-        $act_map[$i][$jact][] = $j;
-      else
-        $act_map[$i][$jact] = array($j);
-    }
-  }
-
-
-  //check user activity, checked
-  for($i = 0; $i < MAXSEQUENCE; $i++){
-        foreach($act_map[$i] as $j => $qusrs) {
-            if(count($qusrs) < $MINGROUPSIZE){
-              foreach($act_map[$i][$j] as $k => $qu){
+        foreach($act_map[$i] as $act => $actUsers) {
+            if(count($actUsers) < $MINGROUPSIZE){
+              foreach($act_map[$i][$act] as $k => $qu){
                 $this->delete_activity($k,$i);
               }
-              unset($act_map[$i][$j]);
-              // echo "\n deleting act_map[$i][$j] \n ";
+              unset($act_map[$i][$act]);
+              // echo "\n deleting act_map[$i][$act] \n ";
             }
         }
   }
@@ -352,28 +339,56 @@ function move(){
   #select the best among available
   for($i = 0; $i < MAXSEQUENCE; $i++){
       for($j = 0; $j < $USERSN; $j++){
-
-
         if(!array_key_exists($j, $this->state[$i][STATE_ACT])){
-          foreach ($act_map[$i] as $k => $amUsers) {
-            if (count($amUsers) == $MAXGROUPSIZE) {
-              unset($act_map[$i][$k]);
+
+
+
+          foreach ($act_map[$i] as $act => $actUsers) {
+            if (count($actUsers) == $MAXGROUPSIZE) {
+              unset($act_map[$i][$act]);//cancella dalla mappa, cosi' non associamo quest'azione
             }else{
-              $third = $this->state[$i][STATE_START][$act_map[$i][$k][0]];
-              if (!$this->overlap($j,$k,$third,$i)) {
-                $act_map[$i][$k][] = $j;
-                $this->state[$i][STATE_ACT][$j] = $k;
-                $this->state[$i][STATE_START][$j] = $this->state[$i][STATE_START][$act_map[$i][$k][0]];
+              $actStartTime = $this->state[$i][STATE_START][$actUsers[0]];
+              if (!$this->overlap($j,$act,$actStartTime,$i)) {
+                $actUsers[] = $j;
+                $this->state[$i][STATE_ACT][$j] = $act;
+                $this->state[$i][STATE_START][$j] = $this->state[$i][STATE_START][$actUsers[0]];
                 break;
               }
             }
           }
+
+
+
+
         }
       }
     }      
   }//end foo
 }//end classe
 
+
+function get_actMapFromState($state){
+  //$act_map = {
+  //  phase1: {
+  //      activity1: {1,3,4, ...},
+  //      activity2: {2,5,8, ...},
+  //      },
+  //  phase2: ...
+  //}
+  //
+  $act_map = array();
+  for($i = 0; $i < MAXSEQUENCE; $i++){
+    $act_map[$i] = array();
+    foreach ($state[$i][STATE_ACT] as $j => $jact) {
+      if(array_key_exists($jact,$act_map[$i]))
+        $act_map[$i][$jact][] = $j;
+      else
+        $act_map[$i][$jact] = array($j);
+    }
+  }
+  return $act_map;
+
+}
 
 # generate an state where no activity is assigned to users
 function generate_inital_state(){
@@ -391,7 +406,12 @@ function print_state($state){
   $distances = $GLOBALS['distances'];
   $activities = $GLOBALS['activities'];
 
+  $USERSN = $GLOBALS['USERSN'];
+  $GROUPSN = $GLOBALS['GROUPSN'];
+  $MAXGROUPSIZE = $GLOBALS['MAXGROUPSIZE'];
+  $MINGROUPSIZE = $GLOBALS['MINGROUPSIZE'];
   
+  echo "\n---------- Solution -----------\n";
   for($i = 0; $i < $USERSN; $i++){
     echo "\nUser ".$i.": ";
     $weight = 0;
@@ -418,6 +438,26 @@ function print_state($state){
       }
     }
   }
+
+  echo "\n\n---------- Act_Map -----------\n\n";
+
+  $actMap = get_actMapFromState($state);
+  for ($i=0; $i < MAXSEQUENCE; $i++) { 
+    $groupCount = 0;
+    $userCount = 0;
+    echo "Phase $i: \n";
+    $phaseActs = $actMap[$i];
+    foreach ($phaseActs as $act => $actUsers) {
+      echo "Acivity:$act done by ".count($actUsers)." users \n";
+      $groupCount++;
+      $userCount += count($actUsers);
+    }
+    echo "total groups: $groupCount, total users: $userCount\n";
+  }
+ 
+  echo "\n---------- Requirments -----------\n";
+  echo "\nPeople:$USERSN  Groups:$GROUPSN  GroupMax:$MAXGROUPSIZE  GroupMin:$MINGROUPSIZE \n";
+
 }
 
 
@@ -464,9 +504,9 @@ for($rep = 0; $rep < 1; $rep++){
 print_state($best_solution);
 
 echo "\n";
-echo "Best solution metric function value: ".$best_value."\n";
-echo "Metric vector: \n";
-var_dump($metric);
+echo "Best solution metric function value: ".$best_value."\n\n";
+// echo "Metric vector: \n";
+// var_dump($metric);
 
 
 ?>
