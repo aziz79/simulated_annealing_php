@@ -1,13 +1,14 @@
 <?php
 
 function checkGlobalOverlapByState($state){
-
+    $MAXWAIT = $GLOBALS['MAXWAIT'];
     $activities = $GLOBALS['activities'];
     $distances = $GLOBALS['distances'];
     for ($phaseB=1; $phaseB < MAXSEQUENCE; $phaseB++) { 
 
       $users = $state[$phaseB][STATE_ACT];
       $phaseA = $phaseB - 1;
+
       foreach ($users as $user => $act) {
         $actOfPhaseA = $state[$phaseA][STATE_ACT][$user];
         $actOfPhaseB = $act;
@@ -19,28 +20,29 @@ function checkGlobalOverlapByState($state){
         $startB = $state[$phaseB][STATE_START][$user];
         $intervalAB = $startA + $actASource[ACTIVITY_DURATION] + $distances[$actASource[ACTIVITY_CELL]][$actBSource[ACTIVITY_CELL]];
         
-
-        // echo "\n =====================  \n ";
+        $waiting = $startB - $intervalAB;
+        // echo "\n =====================  \n";
         // echo "act A($actOfPhaseA) start: {$startA} \n";
         // echo "act A($actOfPhaseA) duration: {$actASource[ACTIVITY_DURATION]} \n";
         // echo "A B distance:".$distances[$actASource[ACTIVITY_CELL]][$actBSource[ACTIVITY_CELL]]."\n";
         // echo "intervalAB: $intervalAB \n";
         // echo "act B($actOfPhaseB) start: ".$startB."\n";
+        // echo "waiting time:".$waiting."\n";
         // echo "\n =====================  \n ";
-        // }
+        
 
         // if ($intervalAB > $startB ) {
         //   echo "(;_;) Time constraint violated for user $user, activity conflict $actOfPhaseA and $actOfPhaseB, $intervalAB is bigger than $startB \n";
         //   die();
         // }
-        if ($intervalAB > $startB ) {
+        if ($intervalAB > $startB || $waiting > $MAXWAIT) {
+         // die();
             return FALSE;
-        }else{
-          return  TRUE;
         }
 
       }
     }
+    return  TRUE;
   }
 
 
@@ -99,7 +101,8 @@ function print_state($state){
   }
  
   echo "\n\n---------- Global Overlap -----------\n\n";
-  if(checkGlobalOverlapByState($state)){
+  $rltcgo  = checkGlobalOverlapByState($state);
+  if($rltcgo){
     echo "Passed! \n";
   }else{
     echo "Failed! \n";

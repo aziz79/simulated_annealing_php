@@ -91,15 +91,17 @@ class GroupMeProblem extends Annealer {
  }
 
   //check if exists activity overlap for a user
-  function overlap($user,$activity,$start,$phase){
+  function overlap($user,$activity,$startX,$phase){
+    $MAXWAIT = $GLOBALS['MAXWAIT'];
     $activities = $GLOBALS['activities'];
     $distances = $GLOBALS['distances'];
     for ($i=$phase+1; $i < MAXSEQUENCE; $i++) { 
       
-      $timeForTheNextActivity = $start + $activities[$phase][$activity][ACTIVITY_DURATION] + $distances[$activities[$phase][$activity][ACTIVITY_CELL]][$activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL]];
+      $timeForActY = $startX + $activities[$phase][$activity][ACTIVITY_DURATION] + $distances[$activities[$phase][$activity][ACTIVITY_CELL]][$activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL]];
 
       if (array_key_exists($user, $this->state[$i][STATE_ACT])) {
-          if($timeForTheNextActivity > $this->state[$i][STATE_START][$user]) {
+          $startY = $this->state[$i][STATE_START][$user];
+          if($timeForActY >  $startY || ($startY - $timeForActY) > $MAXWAIT) {
           return $i;
         }
       }
@@ -107,11 +109,15 @@ class GroupMeProblem extends Annealer {
   
     //the start of last activity should be suitable for this one, considering also distance.
     for ($i=0; $i < $phase; $i++) { 
+
         $first = $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL];
         $second = $activities[$phase][$activity][ACTIVITY_CELL];
-        $timeForTheNextActivity = $this->state[$i][STATE_START][$user] + $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_DURATION] + $distances[$first][$second];
-        if (array_key_exists($user, $this->state[$i][STATE_ACT]) && $timeForTheNextActivity > $start) {
-          return $i;
+        $timeForActY = $this->state[$i][STATE_START][$user] + $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_DURATION] + $distances[$first][$second];
+
+        if (array_key_exists($user, $this->state[$i][STATE_ACT])) {
+          if ($timeForActY > $startX || ($startX - $timeForActY) > $MAXWAIT){
+            return $i;
+          }
         }
     }
     return NULL;  
@@ -294,10 +300,12 @@ $metric = array();
   $init_state = generate_inital_state();
   $problem = new GroupMeProblem($init_state);
   
-  $problem->updates = 60;   # Number of updates (by default an update prints to stdout)
+ // for($t = 1000 ;$t<100000; $t += 4000){
+      $problem->updates = 60;   # Number of updates (by default an update prints to stdout)
   $problem->Tmax = 2;  # Max (starting) temperature
   $problem->Tmin = 1;     # Min (ending) temperature
   $problem->steps = 10000;   # Number of iterations
+  //$problem->steps = $t;   # Number of iterations
   //$problem->steps = 100000;   # Number of iterations
 
 
@@ -313,6 +321,9 @@ $metric = array();
   echo "\n";
   echo "Best solution metric function value: ".$best_value."\n\n";
  // }
+
+ // }
+ // echo "\n".$MAXWAIT." \n";
 
  // var_dump($metric)
 
