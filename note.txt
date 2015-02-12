@@ -7,3 +7,6 @@ activity field {
 4, type of activity
 
 }
+
+activity1 is film
+activity 2 is food
