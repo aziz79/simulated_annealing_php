@@ -1,0 +1,9 @@
+activity field {
+
+0, activity cell
+1, bound on the start time of the activity(time slots)
+2, bound on the end time of the activity(time slots)
+3, activity duration
+4, type of activity
+
+}

@@ -191,29 +191,45 @@ class GroupMeProblem extends Annealer {
 
   public function __construct($init_state){
     $this->state = $init_state;
+    srand(32423423);
   }
 
   function delete_activity($user,$phase){
-   // echo "*****************************************\n";
-  //var_dump($this->state[$phase]);
-//echo "-------------------------------------------------\n";
    unset($this->state[$phase][STATE_ACT][$user]); 
- //var_dump($this->state[$phase]);   
    unset($this->state[$phase][STATE_START][$user]);
  }
 
   //check if exists activity overlap for a user
   function overlap($user,$activity,$start,$phase){
-
-    //the start of next actvity should be suitable for the previous one, considering also distance.
+    $activities = $GLOBALS['activities'];
+    $distances = $GLOBALS['distances'];
     for ($i=$phase+1; $i < MAXSEQUENCE; $i++) { 
+      
       //var_dump($this->state);
+      if ($user == 7) {
+        echo "\n DEBUGGG user:$user,act:$activity,start:$start,ph:$phase \n";
+        echo "\n calculating time for next act start:".$start.";".$activities[$phase][$activity][ACTIVITY_DURATION].";".$distances[$activities[$phase][$activity][ACTIVITY_CELL]][$activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL]]."\n";
+      }
       $timeForTheNextActivity = $start + $activities[$phase][$activity][ACTIVITY_DURATION] + $distances[$activities[$phase][$activity][ACTIVITY_CELL]][$activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL]];
-      //echo "\n state act:".STATE_ACT." state start:".STATE_START." user:".$user." timeForTheNextActivity:".$timeForTheNextActivity."\n";
+      
+      if ($user == 7)
+      echo "\n state act:".STATE_ACT." state start:".STATE_START." user:".$user." timeForTheNextActivity:".$timeForTheNextActivity."\n";
       //var_dump($this->state);
       if (array_key_exists($user, $this->state[$i][STATE_ACT])) {
-          if($timeForTheNextActivity > $this->state[$i][STATE_START][$user]) 
+          
+          if ($user == 7)
+          echo "\n time1(act:$activity): $timeForTheNextActivity phase next start time2(act:".$this->state[$i][STATE_ACT][$user]."): ".$this->state[$i][STATE_START][$user]."\n";
+          
+          if($timeForTheNextActivity > $this->state[$i][STATE_START][$user]) {
+          
+          if ($user == 7)
+          echo "\nso rejected\n";
+
           return $i;
+        }else{
+          if ($user == 7)
+          echo "NOT rejected \n";
+        }
       }
     }
   
@@ -222,7 +238,10 @@ class GroupMeProblem extends Annealer {
         $first = $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL];
         $second = $activities[$phase][$activity][ACTIVITY_CELL];
         $timeForTheNextActivity = $this->state[$i][STATE_START][$user] + $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_DURATION] + $distances[$first][$second];
+        
+       // echo "\n phase 0 end ".$timeForTheNextActivity." "."\n";
         if (array_key_exists($user, $this->state[$i][STATE_ACT]) && $timeForTheNextActivity > $start) {
+          // echo "\nso rejected\n";
           return $i;
         }
     }
@@ -304,6 +323,9 @@ function move(){
   $starting_time = rand($activities[$phase][$activity][ACTIVITY_START],$intern);
 
 
+
+
+
   # set chosen activity for every user
   # possible deleting incompatible ones
   foreach ($users as $keyj => $i) {
@@ -311,13 +333,39 @@ function move(){
       $this->state[$phase][STATE_ACT][$i] = $activity;
       $this->state[$phase][STATE_START][$i] = $starting_time;
 
-      $phase_to_del = $this->overlap($i,$activity,$starting_time,$phase);
 
-      while($phase_to_del != NULL){
-          $this->delete_activity($i,$phase_to_del);
-          $phase_to_del = $this->overlap($i,$activity,$starting_time,$phase);
+
+      $phase_to_del = $this->overlap($i,$activity,$starting_time,$phase);
+      //echo "phase_to_del! (i:$i,ph:$phase_to_del) \n";
+
+      if ($i == 7) {
+        echo "-+++++++++++++++before ++++++++++++++++\n";
+        var_dump($this->state);
+        checkGlobalOverlapByState($this->state);
+        echo "\n phase_to_del is $phase_to_del \n";
       }
+
+
+      while($phase_to_del !== NULL){
+        if ($i == 7) {
+           echo "going to delete delete_activity(i:$i,fase:$phase_to_del)\n";
+        }
+          $this->delete_activity($i,$phase_to_del);
+        //  echo "deleting delete_activity($i,$phase_to_del) \n";
+          $phase_to_del = $this->overlap($i,$activity,$starting_time,$phase);
+         // echo "phase_to_del!!!! ($phase_to_del) \n";
+      }
+
+
+      if ($i == 7) {
+        echo "-+++++++++++++++after ++++++++++++++++\n";
+        var_dump($this->state);
+        checkGlobalOverlapByState($this->state);
+      }
+
   }
+
+  
 
   //map user activities, checked
   $act_map = get_actMapFromState($this->state);
@@ -347,7 +395,7 @@ function move(){
               unset($act_map[$i][$act]);//cancella dalla mappa, cosi' non associamo quest'azione
             }else{
               $actStartTime = $this->state[$i][STATE_START][$actUsers[0]];
-              if (!$this->overlap($j,$act,$actStartTime,$i)) {
+              if ($this->overlap($j,$act,$actStartTime,$i) === NULL) {
                 $actUsers[] = $j;
                 $this->state[$i][STATE_ACT][$j] = $act;
                 $this->state[$i][STATE_START][$j] = $this->state[$i][STATE_START][$actUsers[0]];
@@ -355,53 +403,52 @@ function move(){
               }
             }
           }
-
-
-
-
         }
       }
     }      
   }//end function move
 }//end classe GROUPME problem
 
-  // function checkOverlapByState($state){
-  //   $activities = $GLOBALS['activites'];
-  //   $distances = $GLOBALS['distances'];
-  //   for ($i=1; $i < MAXSEQUENCE; $i++) { 
-  //     $users = $state[$i];
-  //     $h = $i - 1;
-  //     foreach ($users as $user => $act) {
-  //       $actOfPhaseA = $state[$h][$user];
-  //       $actOfPhaseB = $act;
+  function checkGlobalOverlapByState($state){
 
-  //       $actASource = $activities[$h][$actOfPhaseA];
-  //       $intervalAB = $activities[$h][$actOfPhaseA][ACTIVITY_START] + $activities[$h][$actOfPhaseA][ACTIVITY_DURATION] + $distances[][];
-  //     }
-  //     //var_dump($this->state);
-  //     $timeForTheNextActivity = $start + $activities[$phase][$activity][ACTIVITY_DURATION] + $distances[$activities[$phase][$activity][ACTIVITY_CELL]][$activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL]];
-  //     //echo "\n state act:".STATE_ACT." state start:".STATE_START." user:".$user." timeForTheNextActivity:".$timeForTheNextActivity."\n";
-  //     //var_dump($this->state);
-  //     if (array_key_exists($user, $this->state[$i][STATE_ACT])) {
-  //         if($timeForTheNextActivity > $this->state[$i][STATE_START][$user]) 
-  //         return $i;
-  //     }
-  //   }
-  
-  //   //the start of last activity should be suitable for this one, considering also distance.
-  //   for ($i=0; $i < $phase; $i++) { 
-  //       $first = $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_CELL];
-  //       $second = $activities[$phase][$activity][ACTIVITY_CELL];
-  //       $timeForTheNextActivity = $this->state[$i][STATE_START][$user] + $activities[$i][$this->state[$i][STATE_ACT][$user]][ACTIVITY_DURATION] + $distances[$first][$second];
-  //       if (array_key_exists($user, $this->state[$i][STATE_ACT]) && $timeForTheNextActivity > $start) {
-  //         return $i;
-  //       }
-  //   }
-  //   return NULL;  
-  // }
+    $activities = $GLOBALS['activities'];
+    $distances = $GLOBALS['distances'];
+    for ($i=1; $i < MAXSEQUENCE; $i++) { 
+     // var_dump($state);
+
+      $users = $state[$i][STATE_ACT];
+
+      $h = $i - 1;
+      foreach ($users as $user => $act) {
+        $actOfPhaseA = $state[$h][STATE_ACT][$user];
+        $actOfPhaseB = $act;
+
+        $actASource = $activities[$h][$actOfPhaseA];
+        $actBSource = $activities[$i][$actOfPhaseB];
+
+        if ($user == 7 ) {
+        echo "\n =====================  \n ";
+        echo "act A($actOfPhaseA) start: {$actASource[ACTIVITY_START]} \n";
+        echo "act A($actOfPhaseA) duration: {$actASource[ACTIVITY_DURATION]} \n";
+        echo "A B distance:".$distances[$actASource[ACTIVITY_CELL]][$actBSource[ACTIVITY_CELL]]."\n";
+        $intervalAB = $actASource[ACTIVITY_START] + $actASource[ACTIVITY_DURATION] + $distances[$actASource[ACTIVITY_CELL]][$actBSource[ACTIVITY_CELL]];
+        $startB = $actBSource[ACTIVITY_START];
+        echo "intervalAB: $intervalAB \n";
+        echo "act B($actOfPhaseB) start: ".$actBSource[ACTIVITY_START]."\n";
+        echo "\n =====================  \n ";
+        }
+
+        if ($intervalAB > $startB ) {
+          if ($user == 7 )
+          echo "\nError: Time constraint violated for user $user, activity conflict $actOfPhaseA and $actOfPhaseB, $intervalAB is bigger than $startB \n";
+        }
+
+      }
+    }
+  }
 
 
-function get_actMapFromState($state){
+  // Array Exampe
   //$act_map = {
   //  phase1: {
   //      activity1: {1,3,4, ...},
@@ -410,6 +457,8 @@ function get_actMapFromState($state){
   //  phase2: ...
   //}
   //
+function get_actMapFromState($state){
+
   $act_map = array();
   for($i = 0; $i < MAXSEQUENCE; $i++){
     $act_map[$i] = array();
@@ -522,8 +571,8 @@ for($rep = 0; $rep < 1; $rep++){
 
   $problem->Tmax = 2;  # Max (starting) temperature
   $problem->Tmin = 1;     # Min (ending) temperature
-  $problem->steps = 1000;   # Number of iterations
-  //$problem->$steps = 100000;   # Number of iterations
+  $problem->steps = 2000;   # Number of iterations
+  //$problem->steps = 100000;   # Number of iterations
   
   //solution, metric[rep] = problem->anneal()
   $rlt = $problem->anneal();
@@ -539,6 +588,10 @@ print_state($best_solution);
 
 echo "\n";
 echo "Best solution metric function value: ".$best_value."\n\n";
+
+checkGlobalOverlapByState($best_solution);
+
+var_dump($activities[1][2815][ACTIVITY_START]);
 // echo "Metric vector: \n";
 // var_dump($metric);
 
